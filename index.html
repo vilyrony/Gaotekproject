@@ -1,386 +1,490 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consortium of Industrial IoT & M2M</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Montserrat:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
-        html{
-            scroll-behavior: smooth;
-        }
+        html{ scroll-behavior: smooth; }
         body {
-            font-family: 'Roboto', sans-serif;
+            font-family: 'Roboto', 'Montserrat', sans-serif;
             margin: 0;
             padding: 0;
-            color: #333;
-            background-color: #f9f9f9;
-            line-height: 1.6;
+            color: #232e4d;
+            background-color: #f6f8fc;
+            line-height: 1.7;
         }
         header {
-            background-color: #1a237e;
-            color: black;
+            background: linear-gradient(90deg, #1a237e 60%, #0d1b2a 100%);
+            color: #fff;
             padding: 15px 0;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.14);
+            transition: background 0.3s;
         }
         header.scrolled {
-            background-color: #0d1b2a;
+            background: linear-gradient(90deg, #0d1b2a 80%, #1a237e 100%);
+        }
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        h1 img.image1 {
+            width: 220px;
+            height: 70px;
+            transition: transform 0.5s cubic-bezier(.86,0,.07,1);
+        }
+        h1 img.image1:hover {
+            transform: scale(1.06) rotate(-2deg);
+            filter: drop-shadow(0 8px 20px #233d8d44);
         }
         nav {
-            max-width: 1200px;
-            margin: 0 auto;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
+            gap: 16px;
         }
-        nav a {
-            color: white;
+        nav a, .dropbtn {
+            color: #fff;
             text-decoration: none;
-            padding: 10px 15px;
-            transition: color 0.3s ease, transform 0.3s ease;
+            font-size: 1.1rem;
+            padding: 9px 18px;
+            border-radius: 22px;
+            transition: background 0.3s, color 0.3s, transform 0.3s;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
         }
-        nav a:hover {
+        nav a:hover, .dropbtn:hover {
+            background: #bbdefb33;
             color: #bbdefb;
-            transform: translateY(-2px);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 16px #233d8d22;
         }
         .dropdown {
             position: relative;
-            display: inline-block;
         }
-        .dropbtn {
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            cursor: pointer;
-            background: none;
-            font-family: 'Roboto', sans-serif;
-            font-size: 1rem;
-            transition: color 0.3s ease;
+        .dropbtn:after {
+            content: " ▼";
+            font-size: 0.7em;
+            transition: transform 0.3s;
+            margin-left: 2px;
         }
-        .dropbtn:hover {
-            color: #bbdefb;
+        .dropdown:hover .dropbtn:after {
+            transform: rotate(-180deg);
         }
         .dropdown-content {
             display: none;
             position: absolute;
-            background-color: #1a237e;
-            min-width: 160px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            background: #1a237e;
+            top: 38px;
+            left: 0;
+            min-width: 180px;
+            box-shadow: 0 10px 36px rgba(0,0,0,0.13);
+            border-radius: 10px;
             z-index: 1;
-            border-radius: 4px;
+            animation: dropdownAppear 0.35s cubic-bezier(.4,0,.2,1);
         }
         .dropdown-content a {
             color: white;
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-            transition: background-color 0.3s ease;
+            padding: 14px 18px;
+            border-bottom: 1px solid #3f51b533;
+            transition: background 0.25s, transform 0.22s;
+            border-radius: 8px;
         }
+        .dropdown-content a:last-child { border-bottom: none; }
         .dropdown-content a:hover {
-            background-color: #3f51b5;
+            background: #3f51b5;
+            color: #e3f2fd;
+            transform: scale(1.04) translateX(5px);
         }
         .dropdown:hover .dropdown-content {
             display: block;
         }
+        @keyframes dropdownAppear {
+            0% { opacity: 0; transform: translateY(-18px);}
+            100% { opacity: 1; transform: translateY(0);}
+        }
+
+        /* Hero Section */
         .hero {
             position: relative;
-            height: 500px;
+            height: 520px;
             overflow: hidden;
             text-align: center;
             color: white;
+            background: linear-gradient(160deg, #1a237e90 60%, #0d1b2a90 100%);
         }
         .slide {
             position: absolute;
             width: 100%;
             height: 100%;
             opacity: 0;
-            transition: opacity 1s ease-in-out;
-            z-index: -1;
+            pointer-events: none;
+            transition: opacity 1.2s cubic-bezier(.86,0,.07,1);
+            z-index: 0;
         }
         .slide img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            filter: brightness(0.74) blur(1px);
+            transition: filter 0.6s;
         }
         .slide.active {
             opacity: 1;
+            pointer-events: auto;
             z-index: 0;
+            animation: fadeInHero 1.3s cubic-bezier(.86,0,.07,1);
+        }
+        @keyframes fadeInHero {
+            from {opacity:0;}
+            to {opacity:1;}
+        }
+        .caption {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            font-size: 1.5rem;
+            background: rgba(26,35,126,0.25);
+            padding: 8px 0;
+            text-shadow: 0 2px 10px #00000044;
+            letter-spacing: 1px;
+            font-family: 'Montserrat', sans-serif;
+            opacity: 0.88;
+            animation: slideUp 1s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 0.88; }
         }
         .hero-content {
             position: relative;
-            z-index: 1;
-            padding: 100px 20px;
-            background: rgba(0, 0, 0, 0.4);
+            z-index: 3;
+            padding: 110px 20px 0 20px;
+            background: linear-gradient(0deg, #1a237e40 80%, transparent 100%);
         }
         .hero-content h2 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
-            animation: fadeInUp 1s ease-out;
+            font-size: 2.9rem;
+            margin-bottom: 18px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            letter-spacing: 2px;
+            animation: fadeInUp 1.3s cubic-bezier(.86,0,.07,1);
         }
         .hero-content p {
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            animation: fadeInUp 1.2s ease-out;
+            font-size: 1.25rem;
+            margin-bottom: 32px;
+            animation: fadeInUp 1.7s cubic-bezier(.86,0,.07,1);
         }
         .hero button {
-            background-color: #3f51b5;
+            background: linear-gradient(90deg, #3f51b5 70%, #6c63ff 100%);
             color: white;
             border: none;
-            padding: 12px 25px;
-            font-size: 1rem;
+            padding: 14px 35px;
+            font-size: 1.13rem;
+            font-family: 'Montserrat', sans-serif;
             cursor: pointer;
-            border-radius: 5px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 30px;
+            font-weight: 600;
+            box-shadow: 0 6px 18px #3f51b522;
+            transition: background 0.35s, transform 0.23s, box-shadow 0.3s;
+            animation: fadeInUp 2s;
         }
         .hero button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(63, 81, 181, 0.4);
+            background: linear-gradient(90deg, #6c63ff 40%, #3f51b5 100%);
+            transform: translateY(-6px) scale(1.07) rotate(-1deg);
+            box-shadow: 0 10px 32px #3f51b544;
         }
-        .section {
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 20px;
-            position: relative;
-            animation: fadeIn 1s ease-out;
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px);}
+            to { opacity: 1; transform: translateY(0);}
         }
-        .section h2 {
-            color: #1a237e;
-            font-size: 2rem;
-            margin-bottom: 30px;
-            text-align: center;
-        }
+
+        /* Progress Bar */
         .progress-bar {
             position: absolute;
             top: 0;
             left: 0;
-            height: 5px;
-            background-color: #3f51b5;
+            height: 4px;
+            background: linear-gradient(90deg, #3f51b5 0%, #6c63ff 100%);
             width: 0;
-            animation: progress 2s ease-out forwards;
+            border-radius: 5px;
+            animation: progress 1.5s cubic-bezier(.86,0,.07,1) forwards;
         }
         @keyframes progress {
             from { width: 0; }
             to { width: 100%; }
         }
+
+        /* Section */
+        .section {
+            max-width: 1240px;
+            margin: 60px auto;
+            padding: 40px 20px 30px 20px;
+            position: relative;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 6px 26px #1a237e0e;
+            animation: fadeInSection 1.1s cubic-bezier(.86,0,.07,1);
+        }
+        @keyframes fadeInSection {
+            from { opacity: 0; transform: translateY(50px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .section h2 {
+            color: #1a237e;
+            font-size: 2.2rem;
+            margin-bottom: 28px;
+            text-align: center;
+            font-family: 'Montserrat', sans-serif;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 28px;
+            padding-top: 10px;
         }
         .card {
-            background-image: url('tech.jpg');
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 20px;
+            background: linear-gradient(145deg, #f3f4fa 78%, #e2e5f7 100%);
+            border-radius: 12px;
+            box-shadow: 0 3px 16px rgba(36,51,120,0.09);
+            padding: 30px 20px 22px 20px;
             text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.32s, box-shadow 0.27s, background 0.4s;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            animation: fadeInCard 1s cubic-bezier(.86,0,.07,1);
         }
+        .card:before {
+            content: "";
+            position: absolute;
+            left: -40%;
+            top: 50%;
+            width: 190%;
+            height: 90%;
+            background: radial-gradient(circle at 40% 60%, #b0c7fda6 0%, transparent 80%);
+            z-index: 0;
+            opacity: 0.2;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .card:hover:before { opacity: 0.35; }
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(120deg, #e3ebfd 60%, #d6e4fa 100%);
+            transform: translateY(-8px) scale(1.03) rotate(-0.7deg);
+            box-shadow: 0 14px 36px #1a237e30;
         }
         .card img {
-            max-width: 240px;
-            height: auto;
-            margin-bottom: 15px;
-            transition: transform 0.3s ease;
-        }
+    max-width: 300px;
+    height: 230px;
+    margin-bottom: 18px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px #1a237e11;
+    transition: transform 0.26s cubic-bezier(.5,1.5,.5,1), box-shadow 0.3s;
+}
         .card:hover img {
-            transform: scale(1.1);
+            transform: scale(1.07) rotate(3deg);
+            box-shadow: 0 8px 22px #3f51b533;
         }
         .card h3 {
-            color: #1a237e;
-            margin: 10px 0;
+            color: #223389;
+            font-family: 'Montserrat', sans-serif;
+            margin: 10px 0 9px 0;
+            font-size: 1.25rem;
+            letter-spacing: 0.8px;
+            font-weight: 600;
         }
+        .card p {
+            color: #374265;
+            font-size: 1.04rem;
+            margin-bottom: 0;
+        }
+        @keyframes fadeInCard {
+            from { opacity: 0; transform: scale(.95) translateY(25px);}
+            to { opacity: 1; transform: scale(1) translateY(0);}
+        }
+
+        /* Contact Section */
         .contact form {
-            max-width: 500px;
+            max-width: 480px;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
+            gap: 10px;
+            background: #f4f7fd;
+            border-radius: 12px;
+            padding: 22px 24px;
+            box-shadow: 0 3px 12px #1a237e17;
+            animation: fadeInSection 1.2s;
         }
         .contact input, .contact textarea {
-            margin-bottom: 15px;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            margin-bottom: 8px;
+            padding: 14px;
+            border: 1px solid #c5cae9;
+            border-radius: 6px;
             font-size: 1rem;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            transition: border-color 0.23s, box-shadow 0.2s;
+            background: #fff;
         }
         .contact input:focus, .contact textarea:focus {
             border-color: #3f51b5;
-            box-shadow: 0 0 5px rgba(63, 81, 181, 0.3);
+            box-shadow: 0 0 6px #3f51b53a;
             outline: none;
         }
         .contact button {
-            background-color: #3f51b5;
+            background: linear-gradient(90deg, #3f51b5 70%, #6c63ff 100%);
             color: white;
             border: none;
-            padding: 12px;
-            border-radius: 5px;
+            padding: 13px;
+            border-radius: 21px;
             cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            font-size: 1.13rem;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            transition: background 0.27s, transform 0.18s;
+            box-shadow: 0 3px 14px #3f51b51b;
         }
         .contact button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(63, 81, 181, 0.4);
+            background: linear-gradient(90deg, #6c63ff 30%, #3f51b5 100%);
+            transform: scale(1.04) translateY(-2px);
         }
+        #successMessage {
+            display: none;
+            color: #28a745;
+            text-align: center;
+            font-weight: 600;
+            margin-top: 12px;
+            font-size: 1.15rem;
+            animation: fadeInCard 1s;
+        }
+
+        /* Footer */
         footer {
-            background-color: #1a237e;
+            background: linear-gradient(90deg, #1a237e 60%, #0d1b2a 100%);
             color: white;
             text-align: center;
-            padding: 20px 0;
-            margin-top: 40px;
-        }
-        footer a {
-            color: white;
-            text-decoration: none;
-            margin: 0 10px;
-            transition: color 0.3s ease;
-        }
-        footer a:hover {
-            color: #bbdefb;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideAnimation {
-            0% { opacity: 0; }
-            5% { opacity: 1; }
-            20% { opacity: 1; }
-            25% { opacity: 0; }
-            40% { opacity: 0; }
-            45% { opacity: 1; }
-            60% { opacity: 1; }
-            65% { opacity: 0; }
-            80% { opacity: 0; }
-            85% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-        .slide:nth-child(1) { animation: slideAnimation 25s infinite; }
-        .slide:nth-child(2) { animation: slideAnimation 25s infinite 5s; }
-        .slide:nth-child(3) { animation: slideAnimation 25s infinite 10s; }
-        .slide:nth-child(4) { animation: slideAnimation 25s infinite 15s; }
-        .slide:nth-child(5) { animation: slideAnimation 25s infinite 20s; }
-        @media (max-width: 768px) {
-            nav {
-                flex-direction: column;
-                text-align: center;
-            }
-            .hero-content h2 {
-                font-size: 2rem;
-            }
-            .hero-content p {
-                font-size: 1rem;
-            }
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        .image1{
-            width:250px;
-            height:90px;
+            padding: 28px 0 0 0;
+            margin-top: 50px;
+            font-size: 1rem;
         }
         .footer-container {
-            max-width: 1200px;
+            max-width: 1240px;
             margin: 0 auto;
             display: flex;
-            justify-content: space-around;
+            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 20px;
+            gap: 30px;
+            padding-bottom: 20px;
         }
         .footer-section {
-            margin: 10px;
+            margin: 12px;
+            min-width: 170px;
         }
         .footer-section h4 {
-            margin-bottom: 10px;
-            font-size: 1.2rem;
+            margin-bottom: 14px;
+            font-size: 1.25rem;
+            font-family: 'Montserrat', sans-serif;
         }
         .footer-section a {
             display: block;
-            margin: 5px 0;
+            margin: 6px 0;
+            color: #bbdefb;
+            text-decoration: none;
+            transition: color 0.22s, transform 0.15s;
+        }
+        .footer-section a:hover {
+            color: #fff;
+            transform: translateX(8px) scale(1.04);
+        }
+        .footer-section img.img1 {
+            height: 26px;
+            width: 26px;
+            margin-right: 5px;
+            vertical-align:middle;
+            transition: filter 0.2s;
+        }
+        .footer-section img.img1:hover {
+            filter: brightness(1.5) drop-shadow(0 2px 8px #007bff99);
+        }
+        .social-icons a {
+            margin: 0 10px;
+            display: inline-block;
+            font-size: 1.4rem;
+            color: #bbdefb;
+            transition: color 0.2s, transform 0.19s;
+        }
+        .social-icons a:hover {
+            color: #33b3ff;
+            transform: scale(1.14);
         }
         .map {
             width: 100%;
-            max-width: 400px;
-            height: 200px;
+            max-width: 320px;
+            height: 140px;
             border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #3332;
         }
-       
-        .social-icons a {
-            margin: 0 10px;
-            display: inline;
-            font-size: 1.5rem;
-            color: white;
-            transition: color 0.3s ease;
+        @media (max-width: 1100px) {
+            .footer-container { flex-direction: column; align-items: center; text-align: center; }
+            .footer-section { min-width: 0; }
+            .map { max-width: 95vw;}
         }
-        .social-icons a:hover {
-            color: #007bff;
+        footer p {
+            margin: 12px 0 0 0;
+            color: #b0bacf;
+            font-size: 1rem;
         }
-        @media (max-width: 768px) {
-            .footer-container {
-                flex-direction: column;
-                text-align: center;
-            }
+        footer a {
+            color: #bbdefb;
+            margin: 0 8px;
+            font-size: 1rem;
         }
-        .img1{
-            height: 30px;
-            width:30px;
+        footer a:hover { color: #fff; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            nav { margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+            .hero-content h2 { font-size: 2.1rem; }
+            .section { padding: 22px 6vw 22px 6vw;}
+            .grid { grid-template-columns: 1fr 1fr; }
+            .footer-container { flex-direction: column; }
+        }
+        @media (max-width: 700px) {
+            nav { flex-direction: column; gap: 10px;}
+            .hero-content { padding-top: 50px;}
+            .section { margin: 24px 2vw;}
+            .grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 0 4vw;}
+            h1 img.image1 { width: 140px; height: 44px;}
+            .hero { height: 315px; }
+            .section { padding: 16px 2vw; }
+            .footer-container { gap: 10px; }
+        }
+        .progress-bar p{
+            text-align: justify;
         }
     </style>
 </head>
 <body>
     <header id="header">
         <div class="container">
-            <h1><img class="image1" src="logo.png"></h1>
+            <h1><img class="image1" src="logo.png" alt="Logo"></h1>
             <nav>
                 <a href="#home">Home</a>
                 <a href="#about">About</a>
@@ -426,7 +530,7 @@
         <div class="hero-content">
             <h2>Empowering Industrial Innovation</h2>
             <p>Driving the future of Industrial IoT and M2M through collaboration, advanced technology, and real-world solutions.</p>
-            <button>Partner with Us</button>
+            <button onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });">Partner with Us</button>
         </div>
     </section>
 
@@ -441,17 +545,17 @@
         <div class="progress-bar"></div>
         <h2>Applications</h2>
         <div class="grid">
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="link2.png" alt="Manufacturing Icon">
                 <h3>Manufacturing</h3>
                 <p>Optimize production with real-time data analytics and predictive maintenance solutions.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?ixlib=rb-4.0.3" alt="Utilities Icon">
                 <h3>Utilities</h3>
                 <p>Enhance grid reliability and energy efficiency with IoT-enabled smart metering.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="logistic.jpeg" alt="Logistics Icon">
                 <h3>Logistics</h3>
                 <p>Streamline supply chains with real-time tracking and automated logistics solutions.</p>
@@ -464,15 +568,15 @@
         <h2>Our Members</h2>
         <p>A dynamic network of technology-driven companies committed to advancing Industrial IoT and M2M applications.</p>
         <div class="grid">
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="img1.jpg" alt="Partner 1 Logo">
                 <h3>IoT Manufacturing</h3>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="img2.jpg" alt="Partner 2 Logo">
                 <h3>Smart Utility IoT</h3>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="img3.jpg" alt="Partner 3 Logo">
                 <h3>Network Test Expert</h3>
             </div>
@@ -483,22 +587,22 @@
         <div class="progress-bar"></div>
         <h2>Membership Benefits</h2>
         <div class="grid">
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3" alt="Promotion Icon">
                 <h3>Business Promotion</h3>
                 <p>Gain exposure through our platform, showcasing your solutions at industry events and online.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="funding.webp" alt="Funding Icon">
                 <h3>Funding Assistance</h3>
                 <p>Access guidance on securing public/private investments and grants for innovation.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="resourcessharing.jpeg" alt="Resources Icon">
                 <h3>Resource Sharing</h3>
                 <p>Tap into a wealth of white papers, technical toolkits, and expert knowledge.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3" alt="Networking Icon">
                 <h3>Networking & Referrals</h3>
                 <p>Build strategic connections with manufacturers, integrators, and policymakers.</p>
@@ -510,22 +614,22 @@
         <div class="progress-bar"></div>
         <h2>Strategic Opportunities</h2>
         <div class="grid">
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="tekspeaking.jpeg" alt="TekSummit Icon">
                 <h3>TekSummit Speaking Opportunities</h3>
                 <p>Establish thought leadership by presenting at global industrial events.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?ixlib=rb-4.0.3" alt="Collaboration Icon">
                 <h3>IoT & M2M Collaborations</h3>
                 <p>Join pilot projects and co-develop solutions for utilities, logistics, and manufacturing.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="ukraine.jpeg" alt="Rebuilding Icon">
                 <h3>Rebuilding Ukraine Initiative</h3>
                 <p>Support post-conflict infrastructure rebuilding with advanced technology.</p>
             </div>
-            <div class="card">
+            <div class="card" tabindex="0">
                 <img src="Mega.jpeg" alt="MAGA Icon">
                 <h3>MAGA Initiative</h3>
                 <p>Contribute to U.S. industrial revitalization through cutting-edge innovation.</p>
@@ -536,94 +640,100 @@
     <section id="contact" class="section contact">
         <div class="progress-bar"></div>
         <h2>Get in Touch</h2>
-        <p>Interested in partnering or learning more about our consortium? Contact us to explore collaboration opportunities.</p>
-        <form id="contactForm">
+        <p>Have questions or interested in partnering with the Consortium of Industrial IoT & M2M? Whether you are a technology provider,</p> 
+        <p>or industry stakeholder, we welcome inquiries about collaboration, membership, or technical engagement. Our team is ready to connect,</p>
+        <p> support, and explore how we can work together to advance industrial innovation.</p>
+        <p> <h2> Reach out today to start the conversation</h2></p>
+        <form id="contactForm" autocomplete="off">
             <input type="text" placeholder="Your Name" required>
             <input type="email" placeholder="Your Email" required>
-            <textarea placeholder="Your Message" required></textarea>
-            <button type="submit">Send Message</button>
+            <textarea placeholder="Your Message" required rows="4"></textarea>
+            <button type="submit"><i class="fa fa-paper-plane"></i> Send Message</button>
         </form>
-        <p id="successMessage" style="display: none; color: #28a745; text-align: center;">Message sent successfully!</p>
+        <p id="successMessage">Message sent successfully!</p>
     </section>
 
     <footer>
-        <footer>
-            <div class="footer-container">
-                    <div class="footer-section">
-                            <h4><img src="logo.png"></h4>
-                        <p>A collaborative platform advancing<br>
-                        industrial IOT and M2M technologies<br>
-                        through innovation, standardization<br>
-                         and cross industry partnership.
-                        </p></div>
-                <div class="footer-section">
-                    <h4>Events</h4>
-                    <a href="#">Upcoming Webinars</a>
-                    <a href="#">Industry Conferences</a>
-                    <a href="#">Past Events</a>
-                </div>
-                <div class="footer-section">
-                        <h4>Support</h4>
-                        <a href="#">FAQ</a>
-                        <a href="#">Help Center</a>
-                        <a href="#">Contact Support</a>
-                    </div>
-                <div class="footer-section social-icons">
-                    <h4>Follow Us</h4>
-                    <a href="#" aria-label="LinkedIn"><img class="img1" src="link.png"><i class="fab fa-linkedin"></i></a>
-                    <a href="#" aria-label="Twitter"><img class="img1" src="twitter.png"><i class="fab fa-twitter"></i></a>
-                    <a href="#" aria-label="Facebook"><img class="img1" src="fb.png"><i class="fab fa-facebook"></i></a>
-                </div>
-                <div class="footer-section">
-                    <h4>Location</h4>
-                    <iframe class="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434523477!2d-122.41941568464153!3d37.77492997975821!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1692988800000!5m2!1sen!2sin" allowfullscreen="" loading="lazy"></iframe>
-                </div>
-                <div class="footer-section">
-                    <h4>Contact Us</h4>
-                    <p>123 Innovation Drive, Tech City, USA</p>
-                    <p>Phone: +1-800-555-1234</p>
-                </div>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4><img src="logo.png" alt="Logo" style="width:95px;height:32px;"></h4>
+                <p>
+                    A collaborative platform advancing<br>
+                    industrial IoT and M2M technologies<br>
+                    through innovation, standardization<br>
+                    and cross-industry partnership.
+                </p>
             </div>
-            <p>© 2025 Consortium of Industrial IoT & M2M. All rights reserved.</p>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
-        </footer>
-    
+            <div class="footer-section">
+                <h4>Events</h4>
+                <a href="#">Upcoming Webinars</a>
+                <a href="#">Industry Conferences</a>
+                <a href="#">Past Events</a>
+            </div>
+            <div class="footer-section">
+                <h4>Support</h4>
+                <a href="#">FAQ</a>
+                <a href="#">Help Center</a>
+                <a href="#">Contact Support</a>
+            </div>
+            <div class="footer-section">
+                <h4>Location</h4>
+                <iframe class="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434523477!2d-122.41941568464153!3d37.77492997975821!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1692988800000!5m2!1sen!2sin" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+            <div class="footer-section">
+                <h4>Contact Us</h4>
+                <p>555 Southeast Martin Luther King Junior Boulevard,</p>
+                <p> Suite 105, Portland, OR, 97214, USA</p>
+            </div>
+        </div>
+        <p>© 2025 Consortium of Industrial IoT & M2M. All rights reserved.</p>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
     </footer>
 
     <script>
         // Sticky header effect
         window.addEventListener('scroll', () => {
             const header = document.getElementById('header');
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
+            if (window.scrollY > 50) header.classList.add('scrolled');
+            else header.classList.remove('scrolled');
         });
 
         // Slideshow
         let slideIndex = 0;
         const slides = document.getElementsByClassName('slide');
         function showSlides() {
-            for (let i = 0; i < slides.length; i++) {
-                slides[i].classList.remove('active');
-            }
+            for (let i = 0; i < slides.length; i++) slides[i].classList.remove('active');
             slideIndex++;
             if (slideIndex > slides.length) slideIndex = 1;
             slides[slideIndex - 1].classList.add('active');
-            setTimeout(showSlides, 5000); // Change slide every 5 seconds
+            setTimeout(showSlides, 5000);
         }
         showSlides();
+
+        // Animate progress bars when section is in view
+        const bars = document.querySelectorAll('.progress-bar');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.style.animationPlayState = 'running';
+                else entry.target.style.animationPlayState = 'paused';
+            });
+        }, { threshold: 0.6 });
+        bars.forEach(bar => observer.observe(bar));
+
+        // Card focus for accessibility
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('focus', () => card.classList.add('hover'));
+            card.addEventListener('blur', () => card.classList.remove('hover'));
+        });
 
         // Form submission (simulated)
         document.getElementById('contactForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const successMessage = document.getElementById('successMessage');
             successMessage.style.display = 'block';
-            setTimeout(() => {
-                successMessage.style.display = 'none';
-            }, 3000);
+            setTimeout(() => { successMessage.style.display = 'none'; }, 3000);
+            document.getElementById('contactForm').reset();
         });
     </script>
 </body>
