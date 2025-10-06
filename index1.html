@@ -1,0 +1,474 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consortium of Industrial IoT & M2M</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* BASE STYLES & ENHANCED TRANSITIONS */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            background-color: #f9fafb; /* Light background for contrast */
+        }
+        
+        /* Navigation Enhancement */
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 0.25rem;
+            transition: color 0.3s ease, transform 0.2s ease;
+        }
+        .nav-link:hover {
+            color: #3b82f6; /* Brighter blue on hover */
+            transform: translateY(-2px); /* Slight lift */
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%; /* Underline animation */
+        }
+
+        /* Dropdown Enhancement */
+        .dropdown:hover .dropdown-menu {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .dropdown-menu {
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            position: absolute;
+            background-color: #1f2937;
+            min-width: 220px; /* Slightly wider */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+            border-top: 3px solid #3b82f6; /* Accent border */
+            z-index: 10;
+        }
+        .dropdown-menu a {
+            color: white;
+            padding: 0.75rem 1.5rem; /* More padding */
+            display: block;
+        }
+        .dropdown-menu a:hover {
+            background-color: #2b3542; /* Darker hover */
+            text-decoration: none;
+            transform: translateX(5px); /* Slide effect */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        /* Section Backgrounds */
+        .section-bg {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            position: relative;
+            min-height: 450px; /* Taller sections */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .section-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.65); /* Darker overlay for better text contrast */
+            z-index: 1;
+        }
+        .section-bg > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Slideshow */
+        .hero-slideshow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out; /* Slower transition for smoothness */
+            transform: scale(1.05); /* Slight initial zoom */
+        }
+        .slide.active {
+            opacity: 1;
+            transform: scale(1); /* Zoom out effect */
+        }
+        
+        /* Card Enhancement */
+        .card {
+            background-color: white; /* Pure white for contrast against background sections */
+            color: #1f2937; /* Dark text */
+            border-radius: 12px; /* Rounder corners */
+            padding: 1.5rem;
+            margin: 0.75rem;
+            flex: 1 1 280px; /* Slightly larger cards */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease; /* Smoother transition curve */
+            border-bottom: 4px solid transparent; /* Prepare for accent border on hover */
+        }
+        .card:hover {
+            transform: translateY(-8px) scale(1.02); /* More pronounced lift and slight scale */
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+            border-bottom-color: #3b82f6; /* Blue accent border on hover */
+        }
+
+        /* Hero Image */
+        .hero-img {
+            width: 100%;
+            max-width: 350px; /* Slightly larger image */
+            border-radius: 12px;
+            margin: 1.5rem auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+        .hero-img:hover {
+            transform: scale(1.08) rotate(1deg); /* More dynamic hover */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Fade-in Animation Enhancement */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(40px); /* Larger initial distance */
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out; /* Slower and smoother */
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Button Styling */
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.75rem;
+            border-radius: 9999px; /* Pill shape */
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.5); /* Glowing effect */
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
+</head>
+<body>
+    <nav class="bg-gray-800 text-white p-4 sticky top-0 z-50 shadow-lg">
+        <li><img src="iot.png" alt="logo" height="120px" width="200px"></li>
+        <ul class="flex justify-center space-x-8">
+            <li><a href="#home" class="nav-link">Home</a></li>
+            <li><a href="#about" class="nav-link">About</a></li>
+            <li><a href="#applications" class="nav-link">Applications</a></li>
+            <li><a href="#members" class="nav-link">Members</a></li>
+            <li><a href="#benefits" class="nav-link">Benefits</a></li>
+            <li class="dropdown relative">
+                <a href="#opportunities" class="nav-link">Opportunities</a>
+                <ul class="dropdown-menu">
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#teksummit">TekSummit</a></li>
+                    <li><a href="#collaborations">Collaborations</a></li>
+                    <li><a href="#rebuilding-ukraine">Rebuilding Ukraine</a></li>
+                    <li><a href="#maga-initiative">MAGA Initiative</a></li>
+                </ul>
+            </li>
+            <li><a href="#contact" class="nav-link">Contact</a></li>
+        </ul>
+    </nav>
+
+    <section id="home" class="section-bg py-20 text-center fade-in">
+        <div class="hero-slideshow">
+            <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1516321310766-61f6f9c1e48f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
+        </div>
+        <h1 class="text-5xl font-extrabold mb-4 animate-pulse">Empowering the Future with Industrial IoT and M2M Solutions</h1>
+        <p class="text-2xl mb-8 font-light">Advancing Industrial Innovation Through Collaboration and Connected Technology</p>
+        <a href="#contact" class="btn-primary">Partner with Us</a>
+    </section>
+
+    <section id="iiot-m2m" class="py-16 px-6 bg-white text-center fade-in shadow-inner">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">Powering Real-World IIoT & M2M Deployment</h2>
+        <p class="max-w-4xl mx-auto mb-6 text-lg text-gray-600">Industrial IoT (IIoT) and Machine-to-Machine (M2M) technologies are revolutionizing the way modern industries operate—enabling real-time data exchange, intelligent automation, and seamless communication between devices and systems. These technologies empower manufacturers, utilities, logistics providers, and infrastructure operators to optimize processes, reduce downtime, and make faster, data-driven decisions.</p>
+        <p class="max-w-4xl mx-auto text-lg text-gray-600">At the heart of this transformation is a collaborative alliance of private technology, industrial, and manufacturing companies dedicated to advancing scalable, high-performance IIoT and M2M solutions. Through joint innovation, shared expertise, and real-world deployment, the group supports cross-sector progress in operational efficiency, safety, and digital integration. With a strong B2B presence and unified mission, the consortium fosters impactful partnerships, accelerates adoption of smart technologies, and helps shape the future of connected industry across North America.</p>
+    </section>
+
+    <section id="applications" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Key Applications</h2>
+        <p class="text-center max-w-3xl mx-auto mb-10 text-xl font-light">Our consortium members collaborate to develop practical, high-impact applications across industries. These applications are designed to enhance productivity, reduce downtime, and streamline operations.</p>
+        <div class="flex flex-wrap justify-center gap-6">
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Manufacturing" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Manufacturing</h3>
+                <p>Optimize production with real-time data analytics and predictive maintenance solutions.</p>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1506399558188-acca6f8cbf41?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Utilities" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Utilities</h3>
+                <p>Enhance grid reliability and energy efficiency with IoT-enabled smart metering.</p>
+            </div>
+            <div class="card">
+                <img src="logistic.png" alt="Logistics" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Logistics</h3>
+                <p>Streamline supply chains with real-time tracking and automated logistics solutions.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="py-16 px-6 bg-gray-100 text-center fade-in">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">About Us</h2>
+        <h3 class="text-2xl font-semibold mb-6 text-blue-600">Driving Innovation in Industrial Connectivity and Machine-to-Machine Technologies</h3>
+        <p class="max-w-4xl mx-auto text-lg mb-4 text-gray-600">The Consortium of Industrial IoT & M2M is a collective of forward-thinking companies dedicated to advancing industrial connectivity, automation, and machine-to-machine (M2M) communication. Our mission is to accelerate the integration and deployment of real-world solutions through strategic collaboration, shared expertise, and innovative hardware-centric development.</p>
+        <p class="max-w-4xl mx-auto text-lg text-gray-600">We serve as a unified platform where technology providers, system integrators, and industrial partners collaborate to modernize infrastructure and scale smarter industrial ecosystems.</p>
+    </section>
+
+    <section id="members" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1516321310766-61f6f9c1e48f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-4">Our Members</h2>
+        <h3 class="text-2xl font-semibold text-center mb-8">A Collaborative Network of Industry Innovators</h3>
+        <p class="text-center max-w-3xl mx-auto mb-10 text-xl font-light">Our consortium brings together a dynamic group of technology-driven companies committed to advancing Industrial IoT and M2M applications.</p>
+        <div class="flex flex-wrap justify-center gap-6">
+            <div class="card">
+                <img src="iotfactory.jpg">
+                <h3 class="text-2xl font-semibold text-blue-600">IoT Manufacturing</h3>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Smart Utility IoT" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600">Smart Utility IoT</h3>
+            </div>
+            <div class="card">
+                <img src="img2.jpg" alt="Network Test Expert" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600">Network Test Expert</h3>
+            </div>
+        </div>
+    </section>
+
+    <section id="benefits" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Benefits We Provide</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div class="card">
+                <img src="Mega.jpeg" alt="Business Promotion" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Business Promotion</h3>
+                <p>We provide a shared platform for brand exposure, lead generation, and showcasing cutting-edge solutions at industry events and online.</p>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1506399558188-acca6f8cbf41?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Funding Assistance" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Funding Assistance</h3>
+                <p>Get guidance on accessing public/private investment, grants, and cross-border opportunities to support innovation and deployment.</p>
+            </div>
+            <div class="card">
+                <img src="collab.jpg">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Resource Sharing</h3>
+                <p>From white papers to technical toolkits, members gain access to an ever-growing knowledge base built by industrial experts.</p>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Networking & Referrals" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Networking & Referrals</h3>
+                <p>Build strategic connections with hardware manufacturers, integrators, policymakers, and field engineers.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="opportunities" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Strategic Opportunities</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div class="card">
+                <img src="tekspeaking.jpeg" alt="TekSummit" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">TekSummit Speaking Opportunities</h3>
+                <p>Engage in global industrial events, pitch new technologies, and establish your thought leadership on key IIoT and M2M trends.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. | TekSummit by GAO RFID Inc. | TekSummit by GAO Research Inc.</p>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Collaborations" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Industrial IoT & M2M Collaborations</h3>
+                <p>Join pilot projects, co-develop prototypes, and partner on industrial challenges across sectors like utilities, logistics, and smart manufacturing.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are a sponsor of TekSummit by GAO Tek Inc. – IoT & M2M</p>
+            </div>
+            <div class="card">
+                <img src="ukraine.jpeg">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Rebuilding Ukraine Initiative</h3>
+                <p>Support technological infrastructure and industrial rebuilding in post-conflict zones through consortium-led collaboration and smart deployment.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. – Rebuilding Ukraine with Advanced Technology and Global Partnership | TekSummit by GAO RFID Inc. – Rebuilding Ukraine with BLE, RFID IoT, Cloud & Other Advanced Tech</p>
+            </div>
+            <div class="card">
+                <img src="iotfactory.jpg" alt="MAGA Initiative" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">MAGA (Make America Great Again) Initiative</h3>
+                <p>Contribute to national-scale industrial revitalization by promoting U.S.-led innovation, manufacturing excellence, and domestic technology expansion.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. – Make America Great Again (MAGA) Through Deep Tech | TekSummit by GAO RFID Inc. – MAGA (Make America Great Again) with BLE, RFID, IoT, Cloud & Other Advanced Tech</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="py-16 px-6 bg-gray-100 text-center fade-in">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">Contact Us</h2>
+        <p class="max-w-3xl mx-auto mb-8 text-lg text-gray-600">Have questions or interested in partnering with the Consortium of Industrial IoT & M2M? Whether you are a technology provider, manufacturer, or industry stakeholder, we welcome inquiries about collaboration, membership, or technical engagement. Our team is ready to connect, support, and explore how we can work together to advance industrial innovation.</p>
+        <form class="max-w-lg mx-auto space-y-4 bg-white p-8 rounded-xl shadow-2xl border-t-4 border-blue-600">
+            <input type="text" placeholder="Name" class="w-full p-3 border border-gray-300 rounded focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300">
+            <input type="email" placeholder="Email" class="w-full p-3 border border-gray-300 rounded focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300">
+            <textarea placeholder="Message" class="w-full p-3 border border-gray-300 rounded h-32 focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300"></textarea>
+            <button type="submit" class="btn-primary w-full">Send Message</button>
+        </form>
+    </section>
+
+    <footer class="bg-gray-900 text-white py-10 px-6">
+        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 border-b border-gray-700 pb-8">
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Resources</h3>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">White Papers</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Technical Guides</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Case Studies</a></p>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Events</h3>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Upcoming Webinars</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Industry Conferences</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Past Events</a></p>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Contact Us</h3>
+                <p class="mb-2 text-gray-400">123 Innovation Drive, Tech City, USA</p>
+                <p class="mb-2 text-gray-400">Phone: +1-800-555-1234</p>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Our Location</h3>
+                <div class="footer-section">
+                        <iframe class="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434523477!2d-122.41941568464153!3d37.77492997975821!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1692988800000!5m2!1sen!2sin" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                <div id="map" class="map-container shadow-xl"></div>
+            </div>
+        </div>
+        <div class="text-center mt-8 text-gray-400">
+            <p>© 2025 Consortium of Industrial IoT & M2M. All rights reserved.</p>
+            <p class="mt-2"><a href="#" class="hover:text-blue-400 transition">Privacy Policy</a> | <a href="#" class="hover:text-blue-400 transition">Terms of Service</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Google Map
+        function initMap() {
+            const location = { lat: 40.7128, lng: -74.0060 }; // Placeholder: New York City
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15,
+                center: location,
+            });
+            new google.maps.Marker({
+                position: location,
+                map: map,
+                title: "Consortium of Industrial IoT & M2M",
+            });
+        }
+
+        // Intersection Observer for enhanced fade-in animations
+        const sections = document.querySelectorAll('.fade-in');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Stop observing once visible for performance
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 }); // Trigger earlier
+        sections.forEach(section => observer.observe(section));
+
+        // Slideshow for Hero Section (Enhanced transition speed)
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                // Ensure the transition property is on the element for a smooth change
+                slide.style.transition = 'opacity 1.5s ease-in-out, transform 1.5s ease-in-out';
+                slide.classList.toggle('active', i === index);
+                
+                // Add a dynamic transform to the active slide for the subtle zoom-out effect
+                if (i === index) {
+                    slide.style.transform = 'scale(1)';
+                } else {
+                    slide.style.transform = 'scale(1.05)';
+                }
+            });
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        // Initialize slideshow
+        showSlide(currentSlide);
+        setInterval(nextSlide, 6000); // Changed slide interval to 6 seconds for a more professional pace
+    </script>
+</body>
+</html>
