@@ -1,743 +1,474 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consortium of Industrial IoT & M2M</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Montserrat:wght@600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        html{ scroll-behavior: smooth; }
+        /* BASE STYLES & ENHANCED TRANSITIONS */
         body {
-            font-family: 'Roboto', 'Montserrat', sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
-            padding: 0;
-            color: #232e4d;
-            background-color: #f6f8fc;
-            line-height: 1.7;
+            overflow-x: hidden;
+            background-color: #f9fafb; /* Light background for contrast */
         }
-        header {
-            background: linear-gradient(90deg, #1a237e 60%, #0d1b2a 100%);
-            color: #fff;
-            padding: 15px 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.14);
-            transition: background 0.3s;
-        }
-        header.scrolled {
-            background: linear-gradient(90deg, #0d1b2a 80%, #1a237e 100%);
-        }
-        .container {
-            max-width: 1240px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        h1 img.image1 {
-            width: 220px;
-            height: 70px;
-            transition: transform 0.5s cubic-bezier(.86,0,.07,1);
-        }
-        h1 img.image1:hover {
-            transform: scale(1.06) rotate(-2deg);
-            filter: drop-shadow(0 8px 20px #233d8d44);
-        }
-        nav {
-            display: flex;
-            gap: 16px;
-        }
-        nav a, .dropbtn {
-            color: #fff;
-            text-decoration: none;
-            font-size: 1.1rem;
-            padding: 9px 18px;
-            border-radius: 22px;
-            transition: background 0.3s, color 0.3s, transform 0.3s;
-            font-family: 'Montserrat', sans-serif;
-            letter-spacing: 0.5px;
+        
+        /* Navigation Enhancement */
+        .nav-link {
             position: relative;
-            overflow: hidden;
+            padding: 0.5rem 0.25rem;
+            transition: color 0.3s ease, transform 0.2s ease;
         }
-        nav a:hover, .dropbtn:hover {
-            background: #bbdefb33;
-            color: #bbdefb;
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 4px 16px #233d8d22;
+        .nav-link:hover {
+            color: #3b82f6; /* Brighter blue on hover */
+            transform: translateY(-2px); /* Slight lift */
         }
-        .dropdown {
-            position: relative;
-        }
-        .dropbtn:after {
-            content: " ▼";
-            font-size: 0.7em;
-            transition: transform 0.3s;
-            margin-left: 2px;
-        }
-        .dropdown:hover .dropbtn:after {
-            transform: rotate(-180deg);
-        }
-        .dropdown-content {
-            display: none;
+        .nav-link::after {
+            content: '';
             position: absolute;
-            background: #1a237e;
-            top: 38px;
-            left: 0;
-            min-width: 180px;
-            box-shadow: 0 10px 36px rgba(0,0,0,0.13);
-            border-radius: 10px;
-            z-index: 1;
-            animation: dropdownAppear 0.35s cubic-bezier(.4,0,.2,1);
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
         }
-        .dropdown-content a {
-            color: white;
-            padding: 14px 18px;
-            border-bottom: 1px solid #3f51b533;
-            transition: background 0.25s, transform 0.22s;
-            border-radius: 8px;
-        }
-        .dropdown-content a:last-child { border-bottom: none; }
-        .dropdown-content a:hover {
-            background: #3f51b5;
-            color: #e3f2fd;
-            transform: scale(1.04) translateX(5px);
-        }
-        .dropdown:hover .dropdown-content {
-            display: block;
-        }
-        @keyframes dropdownAppear {
-            0% { opacity: 0; transform: translateY(-18px);}
-            100% { opacity: 1; transform: translateY(0);}
+        .nav-link:hover::after {
+            width: 100%; /* Underline animation */
         }
 
-        /* Hero Section */
-        .hero {
-            position: relative;
-            height: 520px;
-            overflow: hidden;
-            text-align: center;
+        /* Dropdown Enhancement */
+        .dropdown:hover .dropdown-menu {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .dropdown-menu {
+            display: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            position: absolute;
+            background-color: #1f2937;
+            min-width: 220px; /* Slightly wider */
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+            border-top: 3px solid #3b82f6; /* Accent border */
+            z-index: 10;
+        }
+        .dropdown-menu a {
             color: white;
-            background: linear-gradient(160deg, #1a237e90 60%, #0d1b2a90 100%);
+            padding: 0.75rem 1.5rem; /* More padding */
+            display: block;
+        }
+        .dropdown-menu a:hover {
+            background-color: #2b3542; /* Darker hover */
+            text-decoration: none;
+            transform: translateX(5px); /* Slide effect */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        /* Section Backgrounds */
+        .section-bg {
+            background-size: cover;
+            background-position: center;
+            color: white;
+            position: relative;
+            min-height: 450px; /* Taller sections */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .section-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.65); /* Darker overlay for better text contrast */
+            z-index: 1;
+        }
+        .section-bg > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Slideshow */
+        .hero-slideshow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
         }
         .slide {
             position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            background-size: cover;
+            background-position: center;
             opacity: 0;
-            pointer-events: none;
-            transition: opacity 1.2s cubic-bezier(.86,0,.07,1);
-            z-index: 0;
-        }
-        .slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: brightness(0.74) blur(1px);
-            transition: filter 0.6s;
+            transition: opacity 1.5s ease-in-out; /* Slower transition for smoothness */
+            transform: scale(1.05); /* Slight initial zoom */
         }
         .slide.active {
             opacity: 1;
-            pointer-events: auto;
-            z-index: 0;
-            animation: fadeInHero 1.3s cubic-bezier(.86,0,.07,1);
+            transform: scale(1); /* Zoom out effect */
         }
-        @keyframes fadeInHero {
-            from {opacity:0;}
-            to {opacity:1;}
-        }
-        .caption {
-            position: absolute;
-            bottom: 40px;
-            left: 0;
-            width: 100%;
-            font-size: 1.5rem;
-            background: rgba(26,35,126,0.25);
-            padding: 8px 0;
-            text-shadow: 0 2px 10px #00000044;
-            letter-spacing: 1px;
-            font-family: 'Montserrat', sans-serif;
-            opacity: 0.88;
-            animation: slideUp 1s;
-        }
-        @keyframes slideUp {
-            from { transform: translateY(40px); opacity: 0; }
-            to { transform: translateY(0); opacity: 0.88; }
-        }
-        .hero-content {
-            position: relative;
-            z-index: 3;
-            padding: 110px 20px 0 20px;
-            background: linear-gradient(0deg, #1a237e40 80%, transparent 100%);
-        }
-        .hero-content h2 {
-            font-size: 2.9rem;
-            margin-bottom: 18px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            letter-spacing: 2px;
-            animation: fadeInUp 1.3s cubic-bezier(.86,0,.07,1);
-        }
-        .hero-content p {
-            font-size: 1.25rem;
-            margin-bottom: 32px;
-            animation: fadeInUp 1.7s cubic-bezier(.86,0,.07,1);
-        }
-        .hero button {
-            background: linear-gradient(90deg, #3f51b5 70%, #6c63ff 100%);
-            color: white;
-            border: none;
-            padding: 14px 35px;
-            font-size: 1.13rem;
-            font-family: 'Montserrat', sans-serif;
-            cursor: pointer;
-            border-radius: 30px;
-            font-weight: 600;
-            box-shadow: 0 6px 18px #3f51b522;
-            transition: background 0.35s, transform 0.23s, box-shadow 0.3s;
-            animation: fadeInUp 2s;
-        }
-        .hero button:hover {
-            background: linear-gradient(90deg, #6c63ff 40%, #3f51b5 100%);
-            transform: translateY(-6px) scale(1.07) rotate(-1deg);
-            box-shadow: 0 10px 32px #3f51b544;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px);}
-            to { opacity: 1; transform: translateY(0);}
-        }
-
-        /* Progress Bar */
-        .progress-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #3f51b5 0%, #6c63ff 100%);
-            width: 0;
-            border-radius: 5px;
-            animation: progress 1.5s cubic-bezier(.86,0,.07,1) forwards;
-        }
-        @keyframes progress {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-
-        /* Section */
-        .section {
-            max-width: 1240px;
-            margin: 60px auto;
-            padding: 40px 20px 30px 20px;
-            position: relative;
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 6px 26px #1a237e0e;
-            animation: fadeInSection 1.1s cubic-bezier(.86,0,.07,1);
-        }
-        @keyframes fadeInSection {
-            from { opacity: 0; transform: translateY(50px);}
-            to { opacity: 1; transform: translateY(0);}
-        }
-        .section h2 {
-            color: #1a237e;
-            font-size: 2.2rem;
-            margin-bottom: 28px;
-            text-align: center;
-            font-family: 'Montserrat', sans-serif;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-        .section p{
-            text-align: center;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 28px;
-            padding-top: 10px;
-        }
+        
+        /* Card Enhancement */
         .card {
-            background: linear-gradient(145deg, #f3f4fa 78%, #e2e5f7 100%);
-            border-radius: 12px;
-            box-shadow: 0 3px 16px rgba(36,51,120,0.09);
-            padding: 30px 20px 22px 20px;
-            text-align: center;
-            transition: transform 0.32s, box-shadow 0.27s, background 0.4s;
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-            animation: fadeInCard 1s cubic-bezier(.86,0,.07,1);
+            background-color: white; /* Pure white for contrast against background sections */
+            color: #1f2937; /* Dark text */
+            border-radius: 12px; /* Rounder corners */
+            padding: 1.5rem;
+            margin: 0.75rem;
+            flex: 1 1 280px; /* Slightly larger cards */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease; /* Smoother transition curve */
+            border-bottom: 4px solid transparent; /* Prepare for accent border on hover */
         }
-        .card:before {
-            content: "";
-            position: absolute;
-            left: -40%;
-            top: 50%;
-            width: 190%;
-            height: 90%;
-            background: radial-gradient(circle at 40% 60%, #b0c7fda6 0%, transparent 80%);
-            z-index: 0;
-            opacity: 0.2;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        .card:hover:before { opacity: 0.35; }
         .card:hover {
-            background: linear-gradient(120deg, #e3ebfd 60%, #d6e4fa 100%);
-            transform: translateY(-8px) scale(1.03) rotate(-0.7deg);
-            box-shadow: 0 14px 36px #1a237e30;
-        }
-        .card img {
-    max-width: 300px;
-    height: 230px;
-    margin-bottom: 18px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px #1a237e11;
-    transition: transform 0.26s cubic-bezier(.5,1.5,.5,1), box-shadow 0.3s;
-}
-        .card:hover img {
-            transform: scale(1.07) rotate(3deg);
-            box-shadow: 0 8px 22px #3f51b533;
-        }
-        .card h3 {
-            color: #223389;
-            font-family: 'Montserrat', sans-serif;
-            margin: 10px 0 9px 0;
-            font-size: 1.25rem;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-        }
-        .card p {
-            color: #374265;
-            font-size: 1.04rem;
-            margin-bottom: 0;
-        }
-        @keyframes fadeInCard {
-            from { opacity: 0; transform: scale(.95) translateY(25px);}
-            to { opacity: 1; transform: scale(1) translateY(0);}
+            transform: translateY(-8px) scale(1.02); /* More pronounced lift and slight scale */
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+            border-bottom-color: #3b82f6; /* Blue accent border on hover */
         }
 
-        /* Contact Section */
-        .contact form {
-            max-width: 480px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: #f4f7fd;
-            border-radius: 12px;
-            padding: 22px 24px;
-            box-shadow: 0 3px 12px #1a237e17;
-            animation: fadeInSection 1.2s;
-        }
-        .contact input, .contact textarea {
-            margin-bottom: 8px;
-            padding: 14px;
-            border: 1px solid #c5cae9;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: border-color 0.23s, box-shadow 0.2s;
-            background: #fff;
-        }
-        .contact input:focus, .contact textarea:focus {
-            border-color: #3f51b5;
-            box-shadow: 0 0 6px #3f51b53a;
-            outline: none;
-        }
-        .contact button {
-            background: linear-gradient(90deg, #3f51b5 70%, #6c63ff 100%);
-            color: white;
-            border: none;
-            padding: 13px;
-            border-radius: 21px;
-            cursor: pointer;
-            font-size: 1.13rem;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-            transition: background 0.27s, transform 0.18s;
-            box-shadow: 0 3px 14px #3f51b51b;
-        }
-        .contact button:hover {
-            background: linear-gradient(90deg, #6c63ff 30%, #3f51b5 100%);
-            transform: scale(1.04) translateY(-2px);
-        }
-        #successMessage {
-            display: none;
-            color: #28a745;
-            text-align: center;
-            font-weight: 600;
-            margin-top: 12px;
-            font-size: 1.15rem;
-            animation: fadeInCard 1s;
-        }
-
-        /* Footer */
-        footer {
-            background: linear-gradient(90deg, #1a237e 60%, #0d1b2a 100%);
-            color: white;
-            text-align: center;
-            padding: 28px 0 0 0;
-            margin-top: 50px;
-            font-size: 1rem;
-        }
-        .footer-container {
-            max-width: 1240px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 30px;
-            padding-bottom: 20px;
-        }
-        .footer-section {
-            margin: 12px;
-            min-width: 170px;
-        }
-        .footer-section h4 {
-            margin-bottom: 14px;
-            font-size: 1.25rem;
-            font-family: 'Montserrat', sans-serif;
-        }
-        .footer-section a {
-            display: block;
-            margin: 6px 0;
-            color: #bbdefb;
-            text-decoration: none;
-            transition: color 0.22s, transform 0.15s;
-        }
-        .footer-section a:hover {
-            color: #fff;
-            transform: translateX(8px) scale(1.04);
-        }
-        .footer-section img.img1 {
-            height: 26px;
-            width: 26px;
-            margin-right: 5px;
-            vertical-align:middle;
-            transition: filter 0.2s;
-        }
-        .footer-section img.img1:hover {
-            filter: brightness(1.5) drop-shadow(0 2px 8px #007bff99);
-        }
-        .social-icons a {
-            margin: 0 10px;
-            display: inline-block;
-            font-size: 1.4rem;
-            color: #bbdefb;
-            transition: color 0.2s, transform 0.19s;
-        }
-        .social-icons a:hover {
-            color: #33b3ff;
-            transform: scale(1.14);
-        }
-        .map {
+        /* Hero Image */
+        .hero-img {
             width: 100%;
-            max-width: 320px;
-            height: 140px;
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px #3332;
+            max-width: 350px; /* Slightly larger image */
+            border-radius: 12px;
+            margin: 1.5rem auto;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
         }
-        @media (max-width: 1100px) {
-            .footer-container { flex-direction: column; align-items: center; text-align: center; }
-            .footer-section { min-width: 0; }
-            .map { max-width: 95vw;}
+        .hero-img:hover {
+            transform: scale(1.08) rotate(1deg); /* More dynamic hover */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
-        footer p {
-            margin: 12px 0 0 0;
-            color: #b0bacf;
-            font-size: 1rem;
-        }
-        footer a {
-            color: #bbdefb;
-            margin: 0 8px;
-            font-size: 1rem;
-        }
-        footer a:hover { color: #fff; }
 
-        /* Responsive */
-        @media (max-width: 900px) {
-            .container { flex-direction: column; }
-            nav { margin-top: 12px; flex-wrap: wrap; justify-content: center; }
-            .hero-content h2 { font-size: 2.1rem; }
-            .section { padding: 22px 6vw 22px 6vw;}
-            .grid { grid-template-columns: 1fr 1fr; }
-            .footer-container { flex-direction: column; }
+        /* Fade-in Animation Enhancement */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(40px); /* Larger initial distance */
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out; /* Slower and smoother */
         }
-        @media (max-width: 700px) {
-            nav { flex-direction: column; gap: 10px;}
-            .hero-content { padding-top: 50px;}
-            .section { margin: 24px 2vw;}
-            .grid { grid-template-columns: 1fr; }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
-        @media (max-width: 600px) {
-            .container { padding: 0 4vw;}
-            h1 img.image1 { width: 140px; height: 44px;}
-            .hero { height: 315px; }
-            .section { padding: 16px 2vw; }
-            .footer-container { gap: 10px; }
+
+        /* Button Styling */
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.75rem;
+            border-radius: 9999px; /* Pill shape */
+            font-weight: bold;
+            letter-spacing: 0.05em;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
         }
-        .progress-bar p{
-            text-align: justify;
+        .btn-primary:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.5); /* Glowing effect */
         }
     </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap" async defer></script>
 </head>
 <body>
-    <header id="header">
-        <div class="container">
-            <h1><img class="image1" src="logo.png" alt="Logo"></h1>
-            <nav>
-                <a href="#home">Home</a>
-                <a href="#about">About</a>
-                <a href="#applications">Applications</a>
-                <a href="#members">Members</a>
-                <a href="#benefits">Benefits</a>
-                <div class="dropdown">
-                    <button class="dropbtn">Opportunities</button>
-                    <div class="dropdown-content">
-                        <a href="#opportunities">Overview</a>
-                        <a href="#teksummit">TekSummit</a>
-                        <a href="#collaborations">Collaborations</a>
-                        <a href="#rebuilding">Rebuilding Ukraine</a>
-                        <a href="#maga">MAGA Initiative</a>
-                    </div>
-                </div>
-                <a href="#contact">Contact</a>
-            </nav>
-        </div>
-    </header>
+    <nav class="bg-gray-800 text-white p-4 sticky top-0 z-50 shadow-lg">
+        <li><img src="iot.png" alt="logo" height="120px" width="200px"></li>
+        <ul class="flex justify-center space-x-8">
+            <li><a href="#home" class="nav-link">Home</a></li>
+            <li><a href="#about" class="nav-link">About</a></li>
+            <li><a href="#applications" class="nav-link">Applications</a></li>
+            <li><a href="#members" class="nav-link">Members</a></li>
+            <li><a href="#benefits" class="nav-link">Benefits</a></li>
+            <li class="dropdown relative">
+                <a href="#opportunities" class="nav-link">Opportunities</a>
+                <ul class="dropdown-menu">
+                    <li><a href="#overview">Overview</a></li>
+                    <li><a href="#teksummit">TekSummit</a></li>
+                    <li><a href="#collaborations">Collaborations</a></li>
+                    <li><a href="#rebuilding-ukraine">Rebuilding Ukraine</a></li>
+                    <li><a href="#maga-initiative">MAGA Initiative</a></li>
+                </ul>
+            </li>
+            <li><a href="#contact" class="nav-link">Contact</a></li>
+        </ul>
+    </nav>
 
-    <section id="home" class="hero">
-        <div class="slide active">
-            <img src="iotfactory.jpg" alt="Industrial IoT Factory">
-            <div class="caption">Smart Factory Solutions</div>
+    <section id="home" class="section-bg py-20 text-center fade-in">
+        <div class="hero-slideshow">
+            <div class="slide active" style="background-image: url('https://images.unsplash.com/photo-1516321310766-61f6f9c1e48f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
+            <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');"></div>
         </div>
-        <div class="slide">
-            <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3" alt="IoT Sensors">
-            <div class="caption">Advanced Sensor Networks</div>
-        </div>
-        <div class="slide">
-            <img src="https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?ixlib=rb-4.0.3" alt="Energy Grid">
-            <div class="caption">Smart Energy Grids</div>
-        </div>
-        <div class="slide">
-            <img src="logistic.png" alt="Logistics Automation">
-            <div class="caption">Automated Logistics</div>
-        </div>
-        <div class="slide">
-            <img src="collab.jpg" alt="Industrial Collaboration">
-            <div class="caption">Global Partnerships</div>
-        </div>
-        <div class="hero-content">
-            <h2>Empowering Industrial Innovation</h2>
-            <p>Driving the future of Industrial IoT and M2M through collaboration, advanced technology, and real-world solutions.</p>
-            <button onclick="document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });">Partner with Us</button>
-        </div>
+        <h1 class="text-5xl font-extrabold mb-4 animate-pulse">Empowering the Future with Industrial IoT and M2M Solutions</h1>
+        <p class="text-2xl mb-8 font-light">Advancing Industrial Innovation Through Collaboration and Connected Technology</p>
+        <a href="#contact" class="btn-primary">Partner with Us</a>
     </section>
 
-    <section id="about" class="section">
-        <div class="progress-bar"></div>
-        <h2>About the Consortium</h2>
-        <p>The Consortium of Industrial IoT & M2M is a collaborative network of innovative companies dedicated to advancing industrial connectivity, automation, and machine-to-machine communication.</p>
-        <p>Our mission is to accelerate the deployment of scalable, high-performance solutions through strategic partnerships, shared expertise, and hardware-centric innovation, modernizing industrial ecosystems across North America.</p>
+    <section id="iiot-m2m" class="py-16 px-6 bg-white text-center fade-in shadow-inner">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">Powering Real-World IIoT & M2M Deployment</h2>
+        <p class="max-w-4xl mx-auto mb-6 text-lg text-gray-600">Industrial IoT (IIoT) and Machine-to-Machine (M2M) technologies are revolutionizing the way modern industries operate—enabling real-time data exchange, intelligent automation, and seamless communication between devices and systems. These technologies empower manufacturers, utilities, logistics providers, and infrastructure operators to optimize processes, reduce downtime, and make faster, data-driven decisions.</p>
+        <p class="max-w-4xl mx-auto text-lg text-gray-600">At the heart of this transformation is a collaborative alliance of private technology, industrial, and manufacturing companies dedicated to advancing scalable, high-performance IIoT and M2M solutions. Through joint innovation, shared expertise, and real-world deployment, the group supports cross-sector progress in operational efficiency, safety, and digital integration. With a strong B2B presence and unified mission, the consortium fosters impactful partnerships, accelerates adoption of smart technologies, and helps shape the future of connected industry across North America.</p>
     </section>
 
-    <section id="applications" class="section">
-        <div class="progress-bar"></div>
-        <h2>Applications</h2>
-        <div class="grid">
-            <div class="card" tabindex="0">
-                <img src="link2.png" alt="Manufacturing Icon">
-                <h3>Manufacturing</h3>
+    <section id="applications" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Key Applications</h2>
+        <p class="text-center max-w-3xl mx-auto mb-10 text-xl font-light">Our consortium members collaborate to develop practical, high-impact applications across industries. These applications are designed to enhance productivity, reduce downtime, and streamline operations.</p>
+        <div class="flex flex-wrap justify-center gap-6">
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Manufacturing" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Manufacturing</h3>
                 <p>Optimize production with real-time data analytics and predictive maintenance solutions.</p>
             </div>
-            <div class="card" tabindex="0">
-                <img src="https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?ixlib=rb-4.0.3" alt="Utilities Icon">
-                <h3>Utilities</h3>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1506399558188-acca6f8cbf41?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Utilities" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Utilities</h3>
                 <p>Enhance grid reliability and energy efficiency with IoT-enabled smart metering.</p>
             </div>
-            <div class="card" tabindex="0">
-                <img src="logistic.jpeg" alt="Logistics Icon">
-                <h3>Logistics</h3>
+            <div class="card">
+                <img src="logistic.png" alt="Logistics" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600 mb-2">Logistics</h3>
                 <p>Streamline supply chains with real-time tracking and automated logistics solutions.</p>
             </div>
         </div>
     </section>
 
-    <section id="members" class="section">
-        <div class="progress-bar"></div>
-        <h2>Our Members</h2>
-        <p>A dynamic network of technology-driven companies committed to advancing Industrial IoT and M2M applications.</p>
-        <div class="grid">
-            <div class="card" tabindex="0">
-                <img src="img1.jpg" alt="Partner 1 Logo">
-                <h3>IoT Manufacturing</h3>
+    <section id="about" class="py-16 px-6 bg-gray-100 text-center fade-in">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">About Us</h2>
+        <h3 class="text-2xl font-semibold mb-6 text-blue-600">Driving Innovation in Industrial Connectivity and Machine-to-Machine Technologies</h3>
+        <p class="max-w-4xl mx-auto text-lg mb-4 text-gray-600">The Consortium of Industrial IoT & M2M is a collective of forward-thinking companies dedicated to advancing industrial connectivity, automation, and machine-to-machine (M2M) communication. Our mission is to accelerate the integration and deployment of real-world solutions through strategic collaboration, shared expertise, and innovative hardware-centric development.</p>
+        <p class="max-w-4xl mx-auto text-lg text-gray-600">We serve as a unified platform where technology providers, system integrators, and industrial partners collaborate to modernize infrastructure and scale smarter industrial ecosystems.</p>
+    </section>
+
+    <section id="members" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1516321310766-61f6f9c1e48f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-4">Our Members</h2>
+        <h3 class="text-2xl font-semibold text-center mb-8">A Collaborative Network of Industry Innovators</h3>
+        <p class="text-center max-w-3xl mx-auto mb-10 text-xl font-light">Our consortium brings together a dynamic group of technology-driven companies committed to advancing Industrial IoT and M2M applications.</p>
+        <div class="flex flex-wrap justify-center gap-6">
+            <div class="card">
+                <img src="iotfactory.jpg">
+                <h3 class="text-2xl font-semibold text-blue-600">IoT Manufacturing</h3>
             </div>
-            <div class="card" tabindex="0">
-                <img src="img2.jpg" alt="Partner 2 Logo">
-                <h3>Smart Utility IoT</h3>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Smart Utility IoT" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600">Smart Utility IoT</h3>
             </div>
-            <div class="card" tabindex="0">
-                <img src="img3.jpg" alt="Partner 3 Logo">
-                <h3>Network Test Expert</h3>
+            <div class="card">
+                <img src="img2.jpg" alt="Network Test Expert" class="w-full h-40 object-cover rounded-t-lg mb-4">
+                <h3 class="text-2xl font-semibold text-blue-600">Network Test Expert</h3>
             </div>
         </div>
     </section>
 
-    <section id="benefits" class="section">
-        <div class="progress-bar"></div>
-        <h2>Membership Benefits</h2>
-        <div class="grid">
-            <div class="card" tabindex="0">
-                <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3" alt="Promotion Icon">
-                <h3>Business Promotion</h3>
-                <p>Gain exposure through our platform, showcasing your solutions at industry events and online.</p>
+    <section id="benefits" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Benefits We Provide</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div class="card">
+                <img src="Mega.jpeg" alt="Business Promotion" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Business Promotion</h3>
+                <p>We provide a shared platform for brand exposure, lead generation, and showcasing cutting-edge solutions at industry events and online.</p>
             </div>
-            <div class="card" tabindex="0">
-                <img src="funding.webp" alt="Funding Icon">
-                <h3>Funding Assistance</h3>
-                <p>Access guidance on securing public/private investments and grants for innovation.</p>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1506399558188-acca6f8cbf41?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Funding Assistance" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Funding Assistance</h3>
+                <p>Get guidance on accessing public/private investment, grants, and cross-border opportunities to support innovation and deployment.</p>
             </div>
-            <div class="card" tabindex="0">
-                <img src="resourcessharing.jpeg" alt="Resources Icon">
-                <h3>Resource Sharing</h3>
-                <p>Tap into a wealth of white papers, technical toolkits, and expert knowledge.</p>
+            <div class="card">
+                <img src="collab.jpg">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Resource Sharing</h3>
+                <p>From white papers to technical toolkits, members gain access to an ever-growing knowledge base built by industrial experts.</p>
             </div>
-            <div class="card" tabindex="0">
-                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3" alt="Networking Icon">
-                <h3>Networking & Referrals</h3>
-                <p>Build strategic connections with manufacturers, integrators, and policymakers.</p>
-            </div>
-        </div>
-    </section>
-
-    <section id="opportunities" class="section">
-        <div class="progress-bar"></div>
-        <h2>Strategic Opportunities</h2>
-        <div class="grid">
-            <div class="card" tabindex="0">
-                <img src="tekspeaking.jpeg" alt="TekSummit Icon">
-                <h3>TekSummit Speaking Opportunities</h3>
-                <p>Establish thought leadership by presenting at global industrial events.</p>
-            </div>
-            <div class="card" tabindex="0">
-                <img src="https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?ixlib=rb-4.0.3" alt="Collaboration Icon">
-                <h3>IoT & M2M Collaborations</h3>
-                <p>Join pilot projects and co-develop solutions for utilities, logistics, and manufacturing.</p>
-            </div>
-            <div class="card" tabindex="0">
-                <img src="ukraine.jpeg" alt="Rebuilding Icon">
-                <h3>Rebuilding Ukraine Initiative</h3>
-                <p>Support post-conflict infrastructure rebuilding with advanced technology.</p>
-            </div>
-            <div class="card" tabindex="0">
-                <img src="Mega.jpeg" alt="MAGA Icon">
-                <h3>MAGA Initiative</h3>
-                <p>Contribute to U.S. industrial revitalization through cutting-edge innovation.</p>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Networking & Referrals" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Networking & Referrals</h3>
+                <p>Build strategic connections with hardware manufacturers, integrators, policymakers, and field engineers.</p>
             </div>
         </div>
     </section>
 
-    <section id="contact" class="section contact">
-        <div class="progress-bar"></div>
-        <h2>Get in Touch</h2>
-        <p>Have questions or interested in partnering with the Consortium of Industrial IoT & M2M? Whether you are a technology provider,</p> 
-        <p>or industry stakeholder, we welcome inquiries about collaboration, membership, or technical engagement. Our team is ready to connect,</p>
-        <p> support, and explore how we can work together to advance industrial innovation.</p>
-        <p> <h2> Reach out today to start the conversation</h2></p>
-        <form id="contactForm" autocomplete="off">
-            <input type="text" placeholder="Your Name" required>
-            <input type="email" placeholder="Your Email" required>
-            <textarea placeholder="Your Message" required rows="4"></textarea>
-            <button type="submit"><i class="fa fa-paper-plane"></i> Send Message</button>
+    <section id="opportunities" class="section-bg py-16 px-6 fade-in" style="background-image: url('https://images.unsplash.com/photo-1551739440-5dd934d3a94a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80');">
+        <h2 class="text-4xl font-bold text-center mb-8">Strategic Opportunities</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div class="card">
+                <img src="tekspeaking.jpeg" alt="TekSummit" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">TekSummit Speaking Opportunities</h3>
+                <p>Engage in global industrial events, pitch new technologies, and establish your thought leadership on key IIoT and M2M trends.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. | TekSummit by GAO RFID Inc. | TekSummit by GAO Research Inc.</p>
+            </div>
+            <div class="card">
+                <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" alt="Collaborations" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Industrial IoT & M2M Collaborations</h3>
+                <p>Join pilot projects, co-develop prototypes, and partner on industrial challenges across sectors like utilities, logistics, and smart manufacturing.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are a sponsor of TekSummit by GAO Tek Inc. – IoT & M2M</p>
+            </div>
+            <div class="card">
+                <img src="ukraine.jpeg">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">Rebuilding Ukraine Initiative</h3>
+                <p>Support technological infrastructure and industrial rebuilding in post-conflict zones through consortium-led collaboration and smart deployment.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. – Rebuilding Ukraine with Advanced Technology and Global Partnership | TekSummit by GAO RFID Inc. – Rebuilding Ukraine with BLE, RFID IoT, Cloud & Other Advanced Tech</p>
+            </div>
+            <div class="card">
+                <img src="iotfactory.jpg" alt="MAGA Initiative" class="w-full h-32 object-cover rounded-t-lg mb-4">
+                <h3 class="text-xl font-semibold text-blue-600 mb-2">MAGA (Make America Great Again) Initiative</h3>
+                <p>Contribute to national-scale industrial revitalization by promoting U.S.-led innovation, manufacturing excellence, and domestic technology expansion.</p>
+                <p class="mt-2 text-sm font-medium text-gray-700">We are sponsoring:</p>
+                <p class="text-xs">TekSummit by GAO Tek Inc. – Make America Great Again (MAGA) Through Deep Tech | TekSummit by GAO RFID Inc. – MAGA (Make America Great Again) with BLE, RFID, IoT, Cloud & Other Advanced Tech</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="py-16 px-6 bg-gray-100 text-center fade-in">
+        <h2 class="text-4xl font-bold mb-4 text-gray-800">Contact Us</h2>
+        <p class="max-w-3xl mx-auto mb-8 text-lg text-gray-600">Have questions or interested in partnering with the Consortium of Industrial IoT & M2M? Whether you are a technology provider, manufacturer, or industry stakeholder, we welcome inquiries about collaboration, membership, or technical engagement. Our team is ready to connect, support, and explore how we can work together to advance industrial innovation.</p>
+        <form class="max-w-lg mx-auto space-y-4 bg-white p-8 rounded-xl shadow-2xl border-t-4 border-blue-600">
+            <input type="text" placeholder="Name" class="w-full p-3 border border-gray-300 rounded focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300">
+            <input type="email" placeholder="Email" class="w-full p-3 border border-gray-300 rounded focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300">
+            <textarea placeholder="Message" class="w-full p-3 border border-gray-300 rounded h-32 focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition duration-300"></textarea>
+            <button type="submit" class="btn-primary w-full">Send Message</button>
         </form>
-        <p id="successMessage">Message sent successfully!</p>
     </section>
 
-    <footer>
-        <div class="footer-container">
-            <div class="footer-section">
-                <h4><img src="logo.png" alt="Logo" style="width:95px;height:32px;"></h4>
-                <p>
-                    A collaborative platform advancing<br>
-                    industrial IoT and M2M technologies<br>
-                    through innovation, standardization<br>
-                    and cross-industry partnership.
-                </p>
+    <footer class="bg-gray-900 text-white py-10 px-6">
+        <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 border-b border-gray-700 pb-8">
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Resources</h3>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">White Papers</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Technical Guides</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Case Studies</a></p>
             </div>
-            <div class="footer-section">
-                <h4>Events</h4>
-                <a href="#">Upcoming Webinars</a>
-                <a href="#">Industry Conferences</a>
-                <a href="#">Past Events</a>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Events</h3>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Upcoming Webinars</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Industry Conferences</a></p>
+                <p class="mb-2"><a href="#" class="text-gray-300 hover:text-blue-400 transition">Past Events</a></p>
             </div>
-            <div class="footer-section">
-                <h4>Support</h4>
-                <a href="#">FAQ</a>
-                <a href="#">Help Center</a>
-                <a href="#">Contact Support</a>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Contact Us</h3>
+                <p class="mb-2 text-gray-400">123 Innovation Drive, Tech City, USA</p>
+                <p class="mb-2 text-gray-400">Phone: +1-800-555-1234</p>
             </div>
-            <div class="footer-section">
-                <h4>Location</h4>
-                <iframe class="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434523477!2d-122.41941568464153!3d37.77492997975821!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1692988800000!5m2!1sen!2sin" allowfullscreen="" loading="lazy"></iframe>
-            </div>
-            <div class="footer-section">
-                <h4>Contact Us</h4>
-                <p>555 Southeast Martin Luther King Junior Boulevard,</p>
-                <p> Suite 105, Portland, OR, 97214, USA</p>
+            <div>
+                <h3 class="text-xl font-bold mb-5 text-blue-400">Our Location</h3>
+                <div class="footer-section">
+                        <iframe class="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434523477!2d-122.41941568464153!3d37.77492997975821!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80859a6d00690021%3A0x4a501367f076adff!2sSan%20Francisco%2C%20CA%2C%20USA!5e0!3m2!1sen!2sin!4v1692988800000!5m2!1sen!2sin" allowfullscreen="" loading="lazy"></iframe>
+                    </div>
+                <div id="map" class="map-container shadow-xl"></div>
             </div>
         </div>
-        <p>© 2025 Consortium of Industrial IoT & M2M. All rights reserved.</p>
-        <a href="#">Privacy Policy</a>
-        <a href="#">Terms of Service</a>
+        <div class="text-center mt-8 text-gray-400">
+            <p>© 2025 Consortium of Industrial IoT & M2M. All rights reserved.</p>
+            <p class="mt-2"><a href="#" class="hover:text-blue-400 transition">Privacy Policy</a> | <a href="#" class="hover:text-blue-400 transition">Terms of Service</a></p>
+        </div>
     </footer>
 
     <script>
-        // Sticky header effect
-        window.addEventListener('scroll', () => {
-            const header = document.getElementById('header');
-            if (window.scrollY > 50) header.classList.add('scrolled');
-            else header.classList.remove('scrolled');
-        });
-
-        // Slideshow
-        let slideIndex = 0;
-        const slides = document.getElementsByClassName('slide');
-        function showSlides() {
-            for (let i = 0; i < slides.length; i++) slides[i].classList.remove('active');
-            slideIndex++;
-            if (slideIndex > slides.length) slideIndex = 1;
-            slides[slideIndex - 1].classList.add('active');
-            setTimeout(showSlides, 5000);
-        }
-        showSlides();
-
-        // Animate progress bars when section is in view
-        const bars = document.querySelectorAll('.progress-bar');
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.style.animationPlayState = 'running';
-                else entry.target.style.animationPlayState = 'paused';
+        // Initialize Google Map
+        function initMap() {
+            const location = { lat: 40.7128, lng: -74.0060 }; // Placeholder: New York City
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15,
+                center: location,
             });
-        }, { threshold: 0.6 });
-        bars.forEach(bar => observer.observe(bar));
+            new google.maps.Marker({
+                position: location,
+                map: map,
+                title: "Consortium of Industrial IoT & M2M",
+            });
+        }
 
-        // Card focus for accessibility
-        document.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('focus', () => card.classList.add('hover'));
-            card.addEventListener('blur', () => card.classList.remove('hover'));
-        });
+        // Intersection Observer for enhanced fade-in animations
+        const sections = document.querySelectorAll('.fade-in');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // Stop observing once visible for performance
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 }); // Trigger earlier
+        sections.forEach(section => observer.observe(section));
 
-        // Form submission (simulated)
-        document.getElementById('contactForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const successMessage = document.getElementById('successMessage');
-            successMessage.style.display = 'block';
-            setTimeout(() => { successMessage.style.display = 'none'; }, 3000);
-            document.getElementById('contactForm').reset();
-        });
+        // Slideshow for Hero Section (Enhanced transition speed)
+        const slides = document.querySelectorAll('.slide');
+        let currentSlide = 0;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                // Ensure the transition property is on the element for a smooth change
+                slide.style.transition = 'opacity 1.5s ease-in-out, transform 1.5s ease-in-out';
+                slide.classList.toggle('active', i === index);
+                
+                // Add a dynamic transform to the active slide for the subtle zoom-out effect
+                if (i === index) {
+                    slide.style.transform = 'scale(1)';
+                } else {
+                    slide.style.transform = 'scale(1.05)';
+                }
+            });
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        // Initialize slideshow
+        showSlide(currentSlide);
+        setInterval(nextSlide, 6000); // Changed slide interval to 6 seconds for a more professional pace
     </script>
 </body>
 </html>
